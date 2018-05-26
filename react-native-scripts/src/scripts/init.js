@@ -8,40 +8,33 @@ import spawn from 'cross-spawn';
 import minimist from 'minimist';
 import log from '../util/log';
 import install from '../util/install';
+import localCli from '../util/localCli';
+
 import { hasYarn } from '../util/pm';
 
 // UPDATE DEPENDENCY VERSIONS HERE
 const DEFAULT_DEPENDENCIES = {
-  expo: '^27.0.1',
-  react: '16.3.1',
-  'react-native': '~0.55.2',
-};
-
-const WEB_DEFAULT_DEPENDENCIES = {
-  'expo-web': '^0.0.12',
-  'react-dom': '16.0.0',
-  'react-native-web': '^0.4.0',
-  webpack: '^3.11.0',
-  'webpack-dev-server': '2.9.4',
+	"react": "16.4.0",
+	"react-native": "0.55.4",
+	"react-native-windows": "0.55.0-rc.0"
 };
 
 // TODO figure out how this interacts with ejection
 const DEFAULT_DEV_DEPENDENCIES = {
-  'jest-expo': '~27.0.0',
-  'react-test-renderer': '16.3.1',
-};
-
-const WEB_DEFAULT_DEV_DEPENDENCIES = {
-  'react-native-scripts': 'latest',
-  'babel-loader': '^7.1.2',
-  'babel-plugin-expo-web': '^0.0.5',
-  'babel-plugin-react-native-web': '^0.4.0',
-  'babel-plugin-transform-decorators-legacy': '^1.3.4',
-  'babel-plugin-transform-imports': '^1.4.1',
-  'babel-plugin-transform-runtime': '^6.23.0',
-  'file-loader': '^1.1.7',
-  'css-loader': '^0.28.7',
-  'style-loader': '^0.19.0',
+	"@types/jest": "22.2.3",
+	"@types/react": "16.3.14",
+	"@types/react-native": "0.55.15",
+	"@types/react-test-renderer": "16.0.1",
+	"babel-jest": "23.0.0",
+	"babel-preset-react-native": "4.0.0",
+	"jest": "23.0.0",
+	"react-addons-test-utils": "15.6.2",
+	"react-native-mock": "0.3.1",
+	"react-native-typescript-transformer": "1.2.8",
+	"react-test-renderer": "16.4.0",
+	"rnpm-plugin-windows": "0.2.8",
+	"ts-jest": "22.4.6",
+	"typescript": "2.8.3"
 };
 
 const arg = minimist(process.argv.slice(2), {
@@ -125,11 +118,6 @@ We recommend using npm >= 5.7.0 or yarn.
   Object.assign(appPackage.dependencies, DEFAULT_DEPENDENCIES);
   Object.assign(appPackage.devDependencies, DEFAULT_DEV_DEPENDENCIES);
 
-  if (withWebSupport) {
-    Object.assign(appPackage.dependencies, WEB_DEFAULT_DEPENDENCIES);
-    Object.assign(appPackage.devDependencies, WEB_DEFAULT_DEV_DEPENDENCIES);
-  }
-
   // Write the new appPackage after copying so that we can include any existing
   await fse.writeFile(appPackagePath, JSON.stringify(appPackage, null, 2));
 
@@ -158,6 +146,20 @@ We recommend using npm >= 5.7.0 or yarn.
     // console.error(`\`${command} ${args.join(' ')}\` failed`);
     return;
   }
+
+	// Resolves local RN CLI in order to initialize app
+	const localCliModulePath = path.resolve(
+		process.cwd(),
+		'node_modules',
+		'react-native',
+		'cli.js');
+
+	// Init RN app
+	let cli = require(localCliModulePath);
+	cli.init(process.cwd(), appName);
+
+	// Add Windows app
+	await localCli(['windows'])
 
   // display the cleanest way to get to the app dir
   // if the cwd + appName is equal to the full path, then just cd into appName
@@ -207,7 +209,6 @@ ${chalk.yellow('You had a `README.md` file, we renamed it to `README.old.md`')}`
     );
   }
 
-  log();
   log('Happy hacking!');
 };
 
