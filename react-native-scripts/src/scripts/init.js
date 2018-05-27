@@ -6,6 +6,7 @@ import path from 'path';
 import pathExists from 'path-exists';
 import spawn from 'cross-spawn';
 import minimist from 'minimist';
+import yeoman from 'yeoman-environment';
 import log from '../util/log';
 import install from '../util/install';
 import localCli from '../util/localCli';
@@ -42,9 +43,8 @@ const arg = minimist(process.argv.slice(2), {
 });
 
 module.exports = async (appPath: string, appName: string, verbose: boolean, cwd: string = '') => {
-  const ownPackageName: string = require('../../package.json').name;
-  const ownPath: string = path.join(appPath, 'node_modules', ownPackageName);
-  const useYarn: boolean = hasYarn(appPath);
+
+	const useYarn: boolean = hasYarn(appPath);
   const npmOrYarn = useYarn ? 'yarn' : 'npm';
 
   if (!useYarn) {
@@ -121,11 +121,81 @@ We recommend using npm >= 5.7.0 or yarn.
   // Write the new appPackage after copying so that we can include any existing
   await fse.writeFile(appPackagePath, JSON.stringify(appPackage, null, 2));
 
-  // Copy the files for the user
-  await fse.copy(
-    path.join(ownPath, arg['with-web-support'] ? 'template-with-web' : 'template'),
-    appPath
-  );
+	// Install packages
+  const { code, command, args } = await install(appPath);
+  if (code !== 0) {
+    console.error('Failed to install');
+    // console.error(`\`${command} ${args.join(' ')}\` failed`);
+    return;
+	}
+
+	// Run default RN generators
+	const rnLocalCliModulePath = path.resolve(
+		process.cwd(),
+		'node_modules',
+		'react-native',
+		'local-cli',
+		'generator',
+		'templates.js');
+
+	const {
+		listTemplatesAndExit,
+		createProjectFromTemplate,
+	} = require(rnLocalCliModulePath);
+
+	createProjectFromTemplate(process.cwd(), appName, undefined, undefined);
+
+	// Run RN Windows generator (use app name for namespace)
+	const generatorWindowsPath = path.resolve(
+		process.cwd(),
+		'node_modules',
+		'react-native-windows',
+		'local-cli',
+		'generator-windows');
+
+	const yeomanEnv = yeoman.createEnv();
+	yeomanEnv.register(generatorWindowsPath, 'react:windows');
+	const generatorWindowsArgs = ['react:windows', appName, appName];
+	yeomanEnv.run(generatorWindowsArgs, { ns: appName, verbose: false}, async () => {
+		removeRedundantFiles(appPath);
+		await copyTemplateFiles(appPath);
+		logFinalMessage(appPath, appName, npmOrYarn);
+	});
+};
+
+function webLogMessage(npmOrYarn) {
+  return `
+  ${chalk.cyan(npmOrYarn + ' web')}
+    Starts the Webpack server to serve the web version of the app.
+  `;
+}
+
+/**
+ * Removes some of files created by standard generators
+ * RN always copies default template files: https://github.com/facebook/react-native/blob/a90d0e3614c467c33cf85bcbe65be71903d5aecc/local-cli/generator/templates.js#L63
+ * RNW always creates App.windows.js file
+ */
+function removeRedundantFiles(appPath) {
+
+	const filesToRemove = [
+		'App.windows.js',
+		'App.js'
+	];
+
+	filesToRemove.forEach(f => {
+		let filePath = path.join(appPath, f);
+		fse.removeSync(filePath);
+		log(`removed ${filePath}`);
+	});
+}
+
+async function copyTemplateFiles(appPath: string) {
+
+	const ownPackageName: string = require('../../package.json').name;
+  const ownPath: string = path.join(appPath, 'node_modules', ownPackageName);
+
+	// Copy the files for the user
+  await fse.copy(path.join(ownPath, 'template'), appPath);
 
   // Rename gitignore after the fact to prevent npm from renaming it to .npmignore
   try {
@@ -139,32 +209,17 @@ We recommend using npm >= 5.7.0 or yarn.
     } else {
       throw err;
     }
-  }
-  const { code, command, args } = await install(appPath);
-  if (code !== 0) {
-    console.error('Failed to install');
-    // console.error(`\`${command} ${args.join(' ')}\` failed`);
-    return;
-  }
+	}
+}
 
-	// Resolves local RN CLI in order to initialize app
-	const localCliModulePath = path.resolve(
-		process.cwd(),
-		'node_modules',
-		'react-native',
-		'cli.js');
-
-	// Init RN app
-	let cli = require(localCliModulePath);
-	cli.init(process.cwd(), appName);
-
-	// Add Windows app
-	await localCli(['windows'])
-
+/**
+ * Prints final message after all generators executed
+ */
+function logFinalMessage(appPath, appName, npmOrYarn) {
   // display the cleanest way to get to the app dir
   // if the cwd + appName is equal to the full path, then just cd into appName
   let cdpath;
-  if (path.resolve(cwd, appName) === appPath) {
+  if (path.resolve(process.cwd(), appName) === appPath) {
     cdpath = appName;
   } else {
     cdpath = appPath;
@@ -187,8 +242,8 @@ Inside that directory, you can run several commands:
     (Requires Android build tools)
     Starts the development server and loads your app on a connected Android
     device or emulator.
-  ${withWebSupport ? webLogMessage(npmOrYarn) : '\n'}
-  ${chalk.cyan(npmOrYarn + ' test')}
+
+	${chalk.cyan(npmOrYarn + ' test')}
     Starts the test runner.
 
   ${chalk.cyan(npmOrYarn + ' run eject')}
@@ -201,20 +256,4 @@ We suggest that you begin by typing:
   ${chalk.cyan('cd ' + cdpath)}
   ${chalk.cyan(npmOrYarn + ' start')}`
   );
-
-  if (readmeExists) {
-    log(
-      `
-${chalk.yellow('You had a `README.md` file, we renamed it to `README.old.md`')}`
-    );
-  }
-
-  log('Happy hacking!');
-};
-
-function webLogMessage(npmOrYarn) {
-  return `
-  ${chalk.cyan(npmOrYarn + ' web')}
-    Starts the Webpack server to serve the web version of the app.
-  `;
 }
