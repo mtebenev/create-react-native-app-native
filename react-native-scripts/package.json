@@ -1,21 +1,23 @@
 {
-  "name": "react-native-scripts",
-  "version": "1.14.0",
-  "description": "Configuration and scripts for Create React Native App.",
+  "name": "react-native-scripts-native",
+  "version": "0.0.1",
+  "description": "Configuration and scripts for Create React Native App with native toolchain, TypeScript and Windows support.",
   "license": "BSD-3-Clause",
   "keywords": [
     "react-native",
-    "react"
+		"react",
+		"typescript",
+		"windows",
+		"uwp"
   ],
-  "homepage": "https://github.com/react-community/create-react-native-app",
-  "bugs": "https://github.com/react-community/create-react-native-app",
+  "homepage": "https://github.com/mtebenev/create-react-native-app-native",
+  "bugs": "https://github.com/mtebenev/create-react-native-app-native",
   "engines": {
     "node": ">=6"
   },
   "files": [
     "build",
-    "template",
-    "template-with-web"
+    "template"
   ],
   "bin": {
     "react-native-scripts": "./build/bin/react-native-scripts.js"
