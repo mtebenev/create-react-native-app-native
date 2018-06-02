@@ -83,26 +83,13 @@ We recommend using npm >= 5.7.0 or yarn.
   const appPackage = JSON.parse(await fse.readFile(appPackagePath));
 
   // mutate the default package.json in any ways we need to
-  appPackage.main = './node_modules/react-native-scripts/build/bin/crna-entry.js';
   appPackage.scripts = {
-    start: 'react-native-scripts start',
-    eject: 'react-native-scripts eject',
-    android: 'react-native-scripts android',
-    ios: 'react-native-scripts ios',
+    start: 'node node_modules/react-native/local-cli/cli.js start',
     test: 'jest',
   };
 
-  const withWebSupport = arg['with-web-support'];
-  if (withWebSupport) {
-    appPackage.main = './node_modules/react-native-scripts/build/bin/crna-entry-web.js';
-    Object.assign(appPackage.scripts, {
-      web: 'webpack-dev-server -d --config ./webpack.config.js  --inline --hot --colors --content-base public/ --history-api-fallback',
-      build: 'NODE_ENV=production webpack -p --config ./webpack.config.js',
-    });
-  }
-
   appPackage.jest = {
-    preset: 'jest-expo',
+    preset: 'react-native',
   };
 
   if (!appPackage.dependencies) {
@@ -159,16 +146,10 @@ We recommend using npm >= 5.7.0 or yarn.
 	yeomanEnv.run(generatorWindowsArgs, { ns: appName, verbose: false}, async () => {
 		removeRedundantFiles(appPath);
 		await copyTemplateFiles(appPath);
+		await updateIndexJs(appPath, appName);
 		logFinalMessage(appPath, appName, npmOrYarn);
 	});
 };
-
-function webLogMessage(npmOrYarn) {
-  return `
-  ${chalk.cyan(npmOrYarn + ' web')}
-    Starts the Webpack server to serve the web version of the app.
-  `;
-}
 
 /**
  * Removes some of files created by standard generators
@@ -185,7 +166,6 @@ function removeRedundantFiles(appPath) {
 	filesToRemove.forEach(f => {
 		let filePath = path.join(appPath, f);
 		fse.removeSync(filePath);
-		log(`removed ${filePath}`);
 	});
 }
 
@@ -213,6 +193,18 @@ async function copyTemplateFiles(appPath: string) {
 }
 
 /**
+ * We have to put correct app name for registration
+ */
+async function updateIndexJs(appPath: string, appName: string) {
+
+	const indexJsPath = path.join(appPath, 'index.js');
+	let content = await fse.readFile(indexJsPath, 'utf8');
+	content = content.replace(/%%APP_NAME%%/g, appName);
+
+	await fse.writeFile(indexJsPath, content, 'utf8');
+}
+
+/**
  * Prints final message after all generators executed
  */
 function logFinalMessage(appPath, appName, npmOrYarn) {
@@ -228,32 +220,9 @@ function logFinalMessage(appPath, appName, npmOrYarn) {
   log(
     `
 Success! Created ${appName} at ${appPath}
-Inside that directory, you can run several commands:
+Use react-native tools for development.
 
-  ${chalk.cyan(npmOrYarn + ' start')}
-    Starts the development server so you can open your app in the Expo
-    app on your phone.
+Read more info at: https://facebook.github.io/react-native/docs/getting-started.html#the-react-native-cli-1
 
-  ${chalk.cyan(npmOrYarn + ' run ios')}
-    (Mac only, requires Xcode)
-    Starts the development server and loads your app in an iOS simulator.
-
-  ${chalk.cyan(npmOrYarn + ' run android')}
-    (Requires Android build tools)
-    Starts the development server and loads your app on a connected Android
-    device or emulator.
-
-	${chalk.cyan(npmOrYarn + ' test')}
-    Starts the test runner.
-
-  ${chalk.cyan(npmOrYarn + ' run eject')}
-    Removes this tool and copies build dependencies, configuration files
-    and scripts into the app directory. If you do this, you can’t go back!
-
-
-We suggest that you begin by typing:
-
-  ${chalk.cyan('cd ' + cdpath)}
-  ${chalk.cyan(npmOrYarn + ' start')}`
-  );
+`);
 }

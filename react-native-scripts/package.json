@@ -1,14 +1,14 @@
 {
   "name": "react-native-scripts-native",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Configuration and scripts for Create React Native App with native toolchain, TypeScript and Windows support.",
   "license": "BSD-3-Clause",
   "keywords": [
     "react-native",
-		"react",
-		"typescript",
-		"windows",
-		"uwp"
+    "react",
+    "typescript",
+    "windows",
+    "uwp"
   ],
   "homepage": "https://github.com/mtebenev/create-react-native-app-native",
   "bugs": "https://github.com/mtebenev/create-react-native-app-native",
@@ -27,7 +27,6 @@
     "build": "taskr build"
   },
   "dependencies": {
-    "@expo/bunyan": "1.8.10",
     "babel-runtime": "^6.9.2",
     "chalk": "^2.0.1",
     "cross-spawn": "^5.0.1",
@@ -39,7 +38,6 @@
     "minimist": "^1.2.0",
     "path-exists": "^3.0.0",
     "progress": "^2.0.0",
-    "qrcode-terminal": "^0.11.0",
     "rimraf": "^2.6.1",
     "xdl": "48.1.4",
     "yeoman-environment": "^1.5.3",
